@@ -199,3 +199,98 @@ Según Junior, esta variable de entorno representa la url de nuestro servidor de
 el lugar de su uso, ya que el que se está usando hasta este punto ``@Value("${spring.mail.verify.host}") `` en el
 **EmailServiceImpl** correspondería en realidad a la url del front-end ``ui.app.url``.
 
+## Configuración específica del entorno: dev, test, prod
+
+Ahora, definiremos las variables de entorno y sus valores en los archivos de configuración dependiendo del entorno en el
+que serán ejecutados, veamos:
+
+``application-dev.yml``
+
+````yml
+#Database
+POSTGRES_SQL_USERNAME: postgres
+POSTGRES_SQL_PASSWORD: magadiflo
+POSTGRES_SQL_HOST: 127.0.0.1
+POSTGRES_SQL_PORT: 5432
+POSTGRES_SQL_DB: db_spring_boot_email
+
+#Server
+SERVER_PORT: 8081
+ACTIVE_PROFILE: dev
+
+## Email Config
+EMAIL_HOST: smtp.gmail.com
+EMAIL_PORT: 587
+EMAIL_ID: magadiflo@gmail.com
+EMAIL_PASSWORD: qdonjimehiaemcku
+VERIFY_EMAIL_HOST: http://localhost:${SERVER_PORT}
+
+UI_APP_URL: http://localhost:4200
+````
+
+``application-test.yml``
+
+````yml
+#Database
+POSTGRES_SQL_USERNAME: postgres
+POSTGRES_SQL_PASSWORD: magadiflo
+POSTGRES_SQL_HOST: 127.0.0.1
+POSTGRES_SQL_PORT: 5432
+POSTGRES_SQL_DB: db_test
+
+#Server
+SERVER_PORT: 8082
+ACTIVE_PROFILE: test
+
+## Email Config
+EMAIL_HOST: smtp.gmail.com
+EMAIL_PORT: 587
+EMAIL_ID: magadiflo@gmail.com
+EMAIL_PASSWORD: qdonjimehiaemcku
+VERIFY_EMAIL_HOST: http://localhost:${SERVER_PORT}
+
+UI_APP_URL: http://localhost:4200
+````
+
+``application-prod.yml``
+
+````yml
+#Database
+POSTGRES_SQL_USERNAME: postgres
+POSTGRES_SQL_PASSWORD: magadiflo
+POSTGRES_SQL_HOST: 127.0.0.1
+POSTGRES_SQL_PORT: 5432
+POSTGRES_SQL_DB: db_production
+
+#Server
+SERVER_PORT: 8083
+ACTIVE_PROFILE: prod
+
+## Email Config
+EMAIL_HOST: smtp.gmail.com
+EMAIL_PORT: 587
+EMAIL_ID: magadiflo@gmail.com
+EMAIL_PASSWORD: qdonjimehiaemcku
+VERIFY_EMAIL_HOST: http://localhost:${SERVER_PORT}
+
+UI_APP_URL: http://localhost:4200
+````
+
+Listo, si ejecutamos la aplicación funcionará correctamente eligiendo el ``application-dev.yml`` como ambiente de
+configuración predeterminado, esto es gracias a que en el **application.yml** definimos la variable de entorno
+**ACTIVE_PROFILE** y si Spring no encuentra esa variable definida, usará el predeterminado **dev**.
+
+Ahora, si quisiéramos cambiar el valor de alguna variable de entorno al momento de ejecutar la aplicación, es decir,
+no cambiando manualmente los valores en los archivos, sino ya sea utilizando **IntelliJ IDEA** o a través de la misma
+línea de comandos, sí se podría realizar. Veamos cómo sería si quisiéra cambiar el puerto ejecutando la aplicación a
+través de la línea de comandos:
+
+Nos posicionamos en la raíz de nuestro proyecto de Spring Boot y ejecutamos el siguiente comando:
+
+````bash
+ mvn spring-boot:run -Dspring-boot.run.arguments=--SERVER_PORT=4000
+````
+
+En el comando anterior estamos asignando el valor de 4000 a la variable de entorno **SERVER_PORT**, de esta manera la
+aplicación se ejecutará con el perfil dev y nuevo puerto 4000.
+

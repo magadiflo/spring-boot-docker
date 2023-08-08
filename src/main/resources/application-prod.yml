@@ -15,3 +15,5 @@ EMAIL_PORT: 587
 EMAIL_ID: magadiflo@gmail.com
 EMAIL_PASSWORD: qdonjimehiaemcku
 VERIFY_EMAIL_HOST: http://localhost:${SERVER_PORT}
+
+UI_APP_URL: http://localhost:4200
