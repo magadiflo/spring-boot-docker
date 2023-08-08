@@ -1,5 +1,5 @@
 server:
-  port: ${SERVER_PORT}
+  port: ${SERVER_PORT:8080}
 
 spring:
   profiles:
@@ -44,3 +44,8 @@ spring:
     # Configuración propia personalizada
     verify:
       host: ${VERIFY_EMAIL_HOST}
+
+# Configuración propia personalizada
+ui:
+  app:
+    url: ${UI_APP_URL}

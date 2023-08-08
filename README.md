@@ -50,3 +50,152 @@ Endpoint para confirmar la cuenta:
 ````bash
  curl -v http://localhost:8081/api/v1/users/confirm?token=4c1d51ae-71ab-42fa-b734-82fee7850aa3 | jq
 ````
+
+---
+
+# Docker and Spring Boot
+
+---
+
+## Configuración application.yml
+
+En nuestro archivo de configuración principal **application.yml** debemos crear variables de entorno con el **${}**.
+Estas variables de entorno deben reemplazar a los valores que tengamos en duro, como por ejemplo, la contraseña y el
+usuario de la base de datos, el puerto, el host del email, etc. de esa manera evitamos tener esos valores **sensibles**
+definidos directamente en el archivo y en su reemplazo usamos las variables de entorno para poder pasar los valores en
+tiempo de ejecución, ya sea usando IntelliJ IDEA o un Command Line (cmd).
+
+Hasta este punto, el proyecto base vino configurado con las variables de entorno en el **application.yml**, como el
+``${SERVER_PORT}, ${ACTIVE_PROFILE:dev}, ${POSTGRES_SQL_HOST}``, etc. A continuación, se muestra el archivo completo:
+
+````yml
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  profiles:
+    active: ${ACTIVE_PROFILE:dev}
+
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_SQL_HOST}:${POSTGRES_SQL_PORT}/${POSTGRES_SQL_DB}
+    username: ${POSTGRES_SQL_USERNAME}
+    password: ${POSTGRES_SQL_PASSWORD}
+
+  jpa:
+    generate-ddl: true
+    show-sql: true
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: America/Lima
+        globally_quoted_identifiers: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  mail:
+    host: ${EMAIL_HOST}
+    port: ${EMAIL_PORT}
+    username: ${EMAIL_ID}
+    password: ${EMAIL_PASSWORD}
+    default-encoding: UTF-8
+    properties:
+      mail:
+        mime:
+          charset: UTF-8
+        smtp:
+          writetimeout: 10000
+          connectiontimeout: 10000
+          timeout: 10000
+          auth: true
+          starttls:
+            enable: true
+            required: true
+    # Configuración propia personalizada
+    verify:
+      host: ${VERIFY_EMAIL_HOST}
+
+# Configuración propia personalizada
+ui:
+  app:
+    url: ${UI_APP_URL}
+````
+
+En la configuración anterior vemos dos variables de entorno: **SERVER_PORT y ACTIVE_PROFILE**. Estas variables de
+entorno tienen definido un valor predeterminado, es decir, por ejemplo, la siguiente variable **${SERVER_PORT:8080}**,
+significa que ``cada vez que la aplicación se inicie, Spring intentará encontrar la variable de entorno SERVER_PORT y si
+no lo encuentra, tomará por defecto el valor 8080.``, lo mismo ocurre para la variable **ACTIVE_PROFILE**, si no lo
+encuentra, tomará por defecto el valor **dev**:
+
+````yml
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  profiles:
+    active: ${ACTIVE_PROFILE:dev}
+````
+
+Además, se han definido **configuraciones personalizadas**, una de ellas es el ``ui:app:url:`` que contiene la
+variable de entorno ``${UI_APP_URL}`` que apunta a la **url de nuestra aplicación front-end**. Esta configuración es
+importante, ya que cuando un usuario se registra debemos enviarle un correo electrónico con un enlace para que pueda
+hacer clic en él. Recordemos que este enlace apunta al front-end. La configuración en el **application.yml** es el
+siguiente:
+
+````yml
+ui:
+  app:
+    url: ${UI_APP_URL}
+````
+
+Una vez haga clic en el enlace enviado al correo, lo llevará a la url de nuestra aplicación front-end, desde allí,
+recién debería llamar al backend (al endpoint de confirmación). Ahora, es importante recordar que hasta este momento lo
+que enviamos como url al correo del usuario que se registra, es la url del backend mismo, veamos:
+
+````java
+
+@RequiredArgsConstructor
+@Service
+public class EmailServiceImpl implements IEmailService {
+    @Value("${spring.mail.verify.host}") //<-- Tomando la url del backend
+    private String host;
+
+    @Override
+    @Async
+    public void sendHtmlEmail(String name, String to, String token) {
+        /* código simplificado */
+        context.setVariables(Map.of(
+                "name", name,
+                "url", EmailUtils.getVerificationUrl(this.host, token),
+                "currentdate", LocalDateTime.now())
+        );
+
+    }
+}
+````
+
+````java
+public class EmailUtils {
+    public static String getVerificationUrl(String host, String token) {
+        return String.format("%s/api/v1/users/confirm?token=%s", host, token);
+    }
+}
+````
+
+> Por lo tanto, solo para dejar anotado, la url que enviamos al correo del usuario registrado debería cambiar y apuntar
+> a la url del front-end.
+
+Otra configuración personalizada que se agregó fue la siguiente:
+
+````yml
+spring:
+  mail:
+    verify:
+      host: ${VERIFY_EMAIL_HOST}
+````
+
+Según Junior, esta variable de entorno representa la url de nuestro servidor de email. Hasta este punto no se observa
+el lugar de su uso, ya que el que se está usando hasta este punto ``@Value("${spring.mail.verify.host}") `` en el
+**EmailServiceImpl** correspondería en realidad a la url del front-end ``ui.app.url``.
+

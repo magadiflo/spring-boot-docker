@@ -9,6 +9,6 @@ public class EmailUtils {
     }
 
     public static String getVerificationUrl(String host, String token) {
-        return String.format("%s/api/v1/users?token=%s", host, token);
+        return String.format("%s/api/v1/users/confirm?token=%s", host, token);
     }
 }
