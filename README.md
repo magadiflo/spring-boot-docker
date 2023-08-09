@@ -382,4 +382,47 @@ CMD["java", "-jar", "app.jar"]
    contenedor. **Esta instrucción se define una sola vez en el Dockerfile, y solo tendrá efecto en el contenedor cuando
    se inicie.** Si se proporciona un comando al iniciar el contenedor, reemplazará el comando CMD definido en el
    Dockerfile. **El comando CMD se usa principalmente para especificar el proceso principal que se ejecutará dentro del
-   contenedor.** 
+   contenedor.**
+
+## Docker Compose
+
+Con **docker-compose** crearemos los contenedores a partir de la imagen generada por el **Dockerfile**. Para eso
+necesitamos crear un archivo llamado **docker-compose.yml** donde configuraremos todo lo relacionado a la creación de
+los contenedores:
+
+````yaml
+services:
+  spring-boot-docker:
+    container_name: spring-boot-docker-container
+    build:
+      context: .
+      args:
+        SERVER_PORT: ${SERVER_PORT}
+    image: spring-boot-docker:v1.0.0
+    restart: unless-stopped
+    env_file:
+      - ${ENV_FILE}
+    expose:
+      - ${SERVER_PORT}
+    ports:
+      - ${SERVER_PORT}:${HOST_PORT}
+````
+
+Antes de iniciar con la explicación de cada línea del archivo anterior, definiremos lo que son los **services** en
+docker-compose:
+
+> Los servicios permiten definir cómo se ejecutan, escalan y se comunican entre sí los distintos contenedores de tu
+> aplicación.
+
+- ``spring-boot-docker``, es el nombre que le daremos a nuestro servicio.
+- ``container_name: spring-boot-docker-container``, nombre que le daremos al contenedor que se creará.
+- ``context: .``, indica el path donde está ubicado el archivo **Dockerfile**, en nuestro caso en la raíz **(.)**.
+- ``args: SERVER_PORT: ${SERVER_PORT}``, definimos la variable de entorno **SERVER_PORT** que espera recibir el archivo
+  **Dockerfile**. Ahora, esta variable de entorno está recibiendo un valor dinámico **${SERVER_PORT}** que será definida
+  al momento de construir el contenedor.
+- ``image: spring-boot-docker:v1.0.0``, le damos un nombre a nuestra imagen y una versión.
+- ``restart: unless-stopped``, significa que el servicio se reiniciará automáticamente cuando Docker se inicie o si el
+  servicio se detiene por cualquier motivo excepto si el usuario lo detiene manualmente.
+- ``env_file: - ${ENV_FILE}``, se utiliza para cargar variables de entorno desde un archivo específico en el sistema de
+  archivos del host. La variable ${ENV_FILE} debe ser reemplazada por el nombre del archivo de variables de entorno que
+  deseas usar.

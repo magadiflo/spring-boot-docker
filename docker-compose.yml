@@ -1,0 +1,15 @@
+services:
+  spring-boot-docker:
+    container_name: spring-boot-docker-container
+    build:
+      context: .
+      args:
+        SERVER_PORT: ${SERVER_PORT}
+    image: spring-boot-docker:v1.0.0
+    restart: unless-stopped
+    env_file:
+      - ${ENV_FILE}
+    expose:
+      - ${SERVER_PORT}
+    ports:
+      - ${SERVER_PORT}:${HOST_PORT}
