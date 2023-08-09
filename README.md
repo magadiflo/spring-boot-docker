@@ -426,3 +426,46 @@ docker-compose:
 - ``env_file: - ${ENV_FILE}``, se utiliza para cargar variables de entorno desde un archivo específico en el sistema de
   archivos del host. La variable ${ENV_FILE} debe ser reemplazada por el nombre del archivo de variables de entorno que
   deseas usar.
+
+**NOTA**
+
+> Podríamos dejar el **EXPOSE del ${SERVER_PORT}** solo en el Dockerfile, pero para estar seguros es que también hacemos
+> el expose del puerto en el archivo docker-compose.yml
+
+## Default Env File (Archivo de entorno predeterminado)
+
+En la raíz del proyecto creamos un archivo del tipo **.env** donde definiremos las variables de entorno y sus valores
+usadas en los archivos **docker-compose.yml y Dockerfile**:
+
+``.env``
+
+````
+SERVER_PORT=8000
+HOST_PORT=8000
+````
+
+Cuando ejecutemos el **docker-compose.yml**, este accederá a nuestro **Dockerfile** para construir la imagen docker de
+la aplicación. Luego, iniciará el contenedor y **de forma predeterminada buscará el archivo .env**
+
+Ahora, **el archivo .env creado anteriormente** es muy diferente al archivo que require la siguiente configuración
+definida en el **docker-compose.yml:**
+
+````yml
+services:
+  spring-boot-docker:
+    env_file:
+      - ${ENV_FILE}
+````
+
+La configuración anterior corresponde a las variables de entorno que requiere el contenedor, estas variables de entorno
+estarán definidas dentro de un archivo **.env** y serán usadas cuando lancemos el contenedor. Observemos que estamos
+pasándole una variable de entorno **${ENV_FILE}**, significa que cuando lancemos la ejecución del docker file debemos
+pasarle el archivo correspondiente ya sea con valores de: dev, test o prod.
+
+Mientras que para la construcción de la imagen, **sí requerimos el primer archivo .env**, quien contiene las dos
+variables de entorno: SERVER_PORT y HOST_PORT.
+
+
+
+
+
