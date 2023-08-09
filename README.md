@@ -439,7 +439,7 @@ usadas en los archivos **docker-compose.yml y Dockerfile**:
 
 ``.env``
 
-````
+````properties
 SERVER_PORT=8000
 HOST_PORT=8000
 ````
@@ -465,7 +465,108 @@ pasarle el archivo correspondiente ya sea con valores de: dev, test o prod.
 Mientras que para la construcción de la imagen, **sí requerimos el primer archivo .env**, quien contiene las dos
 variables de entorno: SERVER_PORT y HOST_PORT.
 
+## Archivos Env específicos del entorno
 
+**Crearemos los archivos .env correspondientes a los distintos entornos** donde ejecutaremos nuestra aplicación. En este
+punto **podemos darle un nombre cualquiera**, en nuestro caso le daremos los siguientes:
 
+- **.env.dev**, para el ambiente de desarrollo.
+- **.env.test**, para el ambiente de pruebas.
+- **.env.prod**, para el ambiente de producción.
 
+### Env para el entorno de desarrollo
 
+Crearemos el archivo ``.env.dev`` en la raíz del proyecto. Copiaremos todas las variables que hemos venido trabajando en
+el archivo **application-dev.yml** y lo pegaremos en este nuevo archivo **.env.dev**.
+
+**NOTA**
+
+> Cuando ejecutemos nuestro proyecto, elegiremos utilizar algún archivo .env de entorno, ya sea el **.env.dev, .env.test
+> o el .env.prod, estos archivos TENDRÁN PRIORIDAD sobre los archivos application-dev.yml, application-test.yml o
+> application-prod.yml**
+
+Las variables que tendrá nuestro archivo **.env.dev** serán las siguientes:
+
+````properties
+# Profile
+ACTIVE_PROFILE=dev
+# Database
+POSTGRES_SQL_USERNAME=postgres
+POSTGRES_SQL_PASSWORD=magadiflo
+POSTGRES_SQL_HOST=127.0.0.1
+POSTGRES_SQL_PORT=5432
+POSTGRES_SQL_DB=db_spring_boot_email
+# Server
+SERVER_PORT=8081
+## Email Config
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_ID=magadiflo@gmail.com
+EMAIL_PASSWORD=${EMAIL_PASSWORD}
+VERIFY_EMAIL_HOST=http://localhost:${SERVER_PORT}
+UI_APP_URL=http://localhost:4200
+HOST_PORT=8000
+````
+
+**NOTA:** La variable **HOST_PORT**, no está definida en el **application-dev.yml** pero aquí sí la definimos.
+
+**IMPORTANTE**
+
+> Junior menciona que estos archivos: .env.dev, .env.test y el .env.prod, **no deberían tener los valores
+> hardcodeados**, sino más bien, estos valores se deberían pasar uno a uno al momento de ejecutar el contenedor, bueno
+> con excepción de la variable **ACTIVE_PROFILE** cuyo valor sí puede estar en duro, ya que solo es para seleccionar el
+> perfil **dev**. Otra opción sería que en la máquina host, definir las variables de entorno desde donde se tomarán los
+> valores.
+>
+> Por tema de ejemplo, solo pasaré dinámicamente la variable **EMAIL_PASSWORD=${EMAIL_PASSWORD}**, pero en el mundo
+> real deberíamos no colocar en duro los valores, sino crear **otra variable de entorno** con el que recibirán
+> dinámicamente los valores. Cuando digo, "otra variable de entorno" me refiero a que, por ejemplo:<br>
+> EMAIL_PASSWORD, es en sí una variable de entorno, y le asignamos otra variable de entorno que recibirá dinámicamente:
+> ${EMAIL_PASSWORD}.
+
+Lo mismo haremos para el entorno de pruebas, creamos el archivo **.env.test** y le cambiamos sus valores en función a
+ese entorno:
+
+````properties
+# Profile
+ACTIVE_PROFILE=test
+# Database
+POSTGRES_SQL_USERNAME=postgres
+POSTGRES_SQL_PASSWORD=magadiflo
+POSTGRES_SQL_HOST=127.0.0.1
+POSTGRES_SQL_PORT=5432
+POSTGRES_SQL_DB=db_test
+# Server
+SERVER_PORT=8082
+## Email Config
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_ID=magadiflo@gmail.com
+EMAIL_PASSWORD=${EMAIL_PASSWORD}
+VERIFY_EMAIL_HOST=http://localhost:${SERVER_PORT}
+UI_APP_URL=http://localhost:4200
+HOST_PORT=8000
+````
+
+Y por último para el entorno de producción, creamos el archivo **.env.prod**:
+
+````properties
+# Profile
+ACTIVE_PROFILE=prod
+# Database
+POSTGRES_SQL_USERNAME=postgres
+POSTGRES_SQL_PASSWORD=magadiflo
+POSTGRES_SQL_HOST=127.0.0.1
+POSTGRES_SQL_PORT=5432
+POSTGRES_SQL_DB=db_production
+# Server
+SERVER_PORT=8083
+## Email Config
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_ID=magadiflo@gmail.com
+EMAIL_PASSWORD=${EMAIL_PASSWORD}
+VERIFY_EMAIL_HOST=http://localhost:${SERVER_PORT}
+UI_APP_URL=http://localhost:4200
+HOST_PORT=8000
+````
