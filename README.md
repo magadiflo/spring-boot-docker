@@ -53,7 +53,7 @@ Endpoint para confirmar la cuenta:
 
 ---
 
-# Docker and Spring Boot
+# Proyecto en Spring Boot
 
 ---
 
@@ -294,3 +294,92 @@ Nos posicionamos en la raíz de nuestro proyecto de Spring Boot y ejecutamos el 
 En el comando anterior estamos asignando el valor de 4000 a la variable de entorno **SERVER_PORT**, de esta manera la
 aplicación se ejecutará con el perfil dev y nuevo puerto 4000.
 
+---
+
+# Docker
+
+---
+
+## Dockerfile
+
+En esta sección configuraremos el archivo **Dockerfile** quien nos permitirá construir la imagen de nuestra aplicación.
+Para esto, trabajaremos con un archivo **Dockerfile multi-stage**, es decir, **dividiremos la construcción de la imagen
+en varias etapas.**
+
+Mostraré a continuación el contenido de nuestro **Dockerfile** final, posteriormente iré explicando a detalle lo que
+hace cada instrucción:
+
+````dockerfile
+# PRIMERA ETAPA
+FROM maven:3.9.3 AS build
+WORKDIR /app
+ARG SERVER_PORT
+COPY pom.xml /app
+RUN mvn dependency:resolve
+COPY . /app
+RUN mvn clean
+RUN mvn package -DskipTests -X
+
+# SEGUNDA ETAPA
+FROM openjdk:17-jdk-alpine
+COPY --from=build /app/target/*.jar app.jar
+EXPOSE ${SERVER_PORT}
+CMD["java", "-jar", "app.jar"]
+````
+
+### PRIMERA ETAPA: Creando el archivo .jar
+
+- ``FROM maven:3.9.3 AS build``, estamos diciendo que usaremos como imagen base, la imagen de maven, versión 3.9.3 y
+  **le damos el alias de build.**
+- ``WORKDIR /app``, crearemos un directorio de trabajo donde colocaremos nuestra aplicación y desde
+  donde trabajaremos, no es obligatorio, pero teniendo un directorio de trabajo nos aseguramos de
+  saber exactamente dónde está nuestra aplicación y dónde se está ejecutando para que cuando se acceda al
+  contenedor sepamos exactamente dónde buscar.
+- ``ARG SERVER_PORT``, creamos una variable con el ARG (de argumento) llamada SERVER_PORT, porque queremos controlar el
+  puerto del contendor desde el exterior del contenedor en ejecución, lo que significa que podemos pasarlo como
+  una especie de variable de entorno, variable que podemos pasar de manera dinámica. **Lo hacemos de esta manera
+  porque necesitamos hacerlo coincidir con lo que se ejecuta en la computadora.**
+- ``COPY pom.xml /app``, **que copie el archivo pom.xml en el directorio de trabajo /app.** Como el Dockerfile está en
+  la misma raíz que el pom.xml, por esa razón colocamos directamente pom.xml.
+- ``RUN mvn dependency:resolve``, con RUN ejecutamos el comando maven **mvn dependency:resolve**, se utiliza para
+  **resolver y descargar las dependencias del proyecto definidas en el archivo pom.xml**, que es el archivo de
+  configuración de Maven. Este comando se centra en resolver las dependencias y descargar los artefactos necesarios para
+  el proyecto. Estas dependencias serán descargadas en este contenedor temporal (build).
+- ``COPY . /app``, que copie todo lo que está en la raíz del dockerfile (directorios, subdirectorios, archivos, etc) en
+  nuestro directorio de trabajo /app.
+- ``RUN mvn clean``, limpiamos todo, con esto se eliminará la carpeta /target.
+- ``RUN mvn package -DskipTests -X``, para generar el .jar omitiendo las pruebas unitarias. **La bandera -X habilita el
+  modo de depuración (verbose) para maven**. Con esta bandera, maven **imprimirá información detallada sobre lo que está
+  haciendo**, como la configuración, las dependencias que resuelve y los pasos que sigue durante la construcción.
+
+### SEGUNDA ETAPA: Construyendo la imagen
+
+- ``FROM openjdk:17-jdk-alpine``, usaremos la imagen base para java, el openjdk:17-jdk-alpine.
+- ``COPY --from=build /app/target/*.jar app.jar``, copiamos desde el paso 1 que tiene el alias build, y **lo que
+  copiaremos se encuentra en /app/target y dentro de este último directorio estará nuestro .jar** quien tendrá un nombre
+  extraño, pero no importa el nombre que tenga, solo nos interesa que sea el archivo .jar, solo tendremos un archivo
+  .jar, así que para evitar colocar todo su nombre simplemente colocamos ``*.jar``. Ahora, ese .jar que se está
+  copiando **le podemos dar un nombre, en nuestro caso le dimos el nombre de app.jar**
+- ``EXPOSE ${SERVER_PORT}``, expondremos el server port, haciendo referencia a la variable SERVER_PORT que pasaremos
+  dinámicamente como el puerto para exponer desde el interior del contenedor.
+
+**NOTA**
+
+> Recordar, como mencionó Andrés Guzmán en su curso de microservicios, el **EXPOSE** únicamente es a modo de
+> documentación, para decirle al mundo qué puertos están disponibles.
+
+- ``CMD["java", "-jar", "app.jar"]``, le decimos el comando que usaremos para ejecutar nuestra aplicación java.
+
+**DIFERENCIA ENTRE RUN Y CMD**
+
+1. **RUN:** el comando RUN **se utiliza durante la fase de construcción del contenedor** para ejecutar comandos en una
+   nueva capa de la imagen. Estos comandos **se ejecutan en el momento de la construcción y se utilizan para instalar
+   paquetes, configurar entornos, copiar archivos, etc.** Cada instrucción RUN crea una nueva capa en la imagen, lo que
+   permite que las capas se almacenen en caché y se reutilicen si los comandos no han cambiado.
+
+
+2. **CMD:** La instrucción CMD se utiliza para proporcionar un comando por defecto que se ejecutará cuando se inicie el
+   contenedor. **Esta instrucción se define una sola vez en el Dockerfile, y solo tendrá efecto en el contenedor cuando
+   se inicie.** Si se proporciona un comando al iniciar el contenedor, reemplazará el comando CMD definido en el
+   Dockerfile. **El comando CMD se usa principalmente para especificar el proceso principal que se ejecutará dentro del
+   contenedor.** 
