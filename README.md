@@ -570,3 +570,81 @@ VERIFY_EMAIL_HOST=http://localhost:${SERVER_PORT}
 UI_APP_URL=http://localhost:4200
 HOST_PORT=8000
 ````
+
+## Script de Inicio
+
+Hasta este punto ya podríamos ejecutar el **docker-compose.yml**, pero lo haremos de una forma más sencilla aún. Lo
+que haremos será **envolver en un script de shell** los comandos Docker, de esa forma se nos hará más sencillo la
+ejecución.
+
+En la raíz del proyecto creamos tres archivos **script de shell** correspondientes a cada entorno de ejecución.
+Los archivos pueden tener cualquier nombre, pero deben terminar con la extensión **.sh**:
+
+``start-dev.sh``
+
+````shell
+ENV_FILE=./.env.dev docker-compose up -d --build
+````
+
+``start-test.sh``
+
+````shell
+ENV_FILE=./.env.test docker-compose up -d --build
+````
+
+``start-prod.sh``
+
+````shell
+ENV_FILE=./.env.prod docker-compose up -d --build
+````
+
+**DONDE**
+
+**ENV_FILE=./.env.<entorno>**, corresponde a la siguiente configuración del docker-compose.yml donde está obteniendo
+el archivo .env.<entorno> ubicado en la raíz del proyecto:
+
+````
+env_file:
+  - ${ENV_FILE}
+````
+
+- **docker-compose up**, es el comando de Docker Compose con el que empezará a ejecutarse el archivo docker-compose.yml.
+- **-d**, que la ejecución ocurra en modo detached, es decir que no tome la consola, sino que se ejecute en background.
+- **--build**, porque tenemos en el docker-compose.yml un archivo Dockerfile que necesitamos construir, esto se refiere
+  a la siguiente configuración:
+
+````
+build:
+  context: .
+  args:
+    SERVER_PORT: ${SERVER_PORT}
+````
+
+Recordemos que en los archivos de entorno: ``.env.dev, .env.test y .env.prod`` definimos la variable ${EMAIL_PASSWORD}
+y hasta el momento no lo estamos pasando. Entonces podríamos hacer algo como esto en cada **script de shell**
+creado anteriormente:
+
+````shell
+ENV_FILE=./.env.dev EMAIL_PASSWORD=qdonjimehiaemcku docker-compose up -d --build
+````
+
+Como vemos, al igual que la variable de entorno ENV_FILE (quien está definido en el docker-compose.yml), también
+podríamos definir la variable EMAIL_PASSWORD (definido en los 3 archivos .env de entorno) en esta misma línea de
+comandos, **pero en nuestro caso no lo haremos así.**
+
+Si bien es cierto, podríamos dejar la variable EMAIL_PASSWORD definida en la misma línea de comandos, pero
+nuestra intención no es guardar datos sensibles en los archivos, en este caso en los **script de shell**, sino más bien,
+**el valor de EMAIL_PASSWORD lo pasaremos justo al momento de ejecutar el archivo sh**, aunque en realidad, deberíamos
+haber creado las variables para todas las otras variables que están en el archivo .env.dev (y todos los archivos de
+entorno) y pasarlos al momento de ejecutar el archivo sh tal como lo haremos con la variable EMAIL_PASSWORD, pero como
+son muchas variables, solo estamos ejemplificando con el EMAIL_PASSWORD.
+
+### ¿Cómo obtiene los valores para las variables SERVER_PORT y HOST_PORT?
+
+**De manera predeterminada Docker buscará un archivo llamado .env** para utilizar sus variables definidas, en nuestro
+caso sí tenemos creado dicho archivo con dos variables de entorno: SERVER_PORT y HOST_PORT, mismas variables que luego
+serán usadas en el archivo docker-compose.yml, ya que este archivo espera recibir el valor de dichas variables de
+entorno. **Eso significa que no tenemos que hacer nada para que el archivo .env entre en funcionamiento, en automático
+será usado por el docker-compose.yml.**
+
+
