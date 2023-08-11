@@ -6,7 +6,7 @@ POSTGRES_SQL_PORT: 5432
 POSTGRES_SQL_DB: db_spring_boot_email
 
 #Server
-SERVER_PORT: 8081
+CONTAINER_PORT: 8091
 ACTIVE_PROFILE: dev
 
 ## Email Config
@@ -14,6 +14,6 @@ EMAIL_HOST: smtp.gmail.com
 EMAIL_PORT: 587
 EMAIL_ID: magadiflo@gmail.com
 EMAIL_PASSWORD: qdonjimehiaemcku
-VERIFY_EMAIL_HOST: http://localhost:${SERVER_PORT}
+VERIFY_EMAIL_HOST: http://localhost:${CONTAINER_PORT}
 
 UI_APP_URL: http://localhost:4200

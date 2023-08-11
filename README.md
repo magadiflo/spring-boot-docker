@@ -66,11 +66,16 @@ definidos directamente en el archivo y en su reemplazo usamos las variables de e
 tiempo de ejecución, ya sea usando IntelliJ IDEA o un Command Line (cmd).
 
 Hasta este punto, el proyecto base vino configurado con las variables de entorno en el **application.yml**, como el
-``${SERVER_PORT}, ${ACTIVE_PROFILE:dev}, ${POSTGRES_SQL_HOST}``, etc. A continuación, se muestra el archivo completo:
+``${SERVER_PORT}, ${ACTIVE_PROFILE:dev}, ${POSTGRES_SQL_HOST}``, etc. aunque la variable **SERVER_PORT** lo cambiaremos
+por el nombre de ``CONTAINER_PORT`` para que haga referencia al puerto que usará nuestra aplicación dentro del
+contenedor Docker, es decir, nuestra aplicación de Spring Boot se ejecutará dentro del contenedor Docker en el puerto
+que le asignemos a la variable **CONTAINER_PORT**.
+
+A continuación, se muestra el archivo completo:
 
 ````yml
 server:
-  port: ${SERVER_PORT:8080}
+  port: ${CONTAINER_PORT:8080}
 
 spring:
   profiles:
@@ -122,15 +127,15 @@ ui:
     url: ${UI_APP_URL}
 ````
 
-En la configuración anterior vemos dos variables de entorno: **SERVER_PORT y ACTIVE_PROFILE**. Estas variables de
-entorno tienen definido un valor predeterminado, es decir, por ejemplo, la siguiente variable **${SERVER_PORT:8080}**,
-significa que ``cada vez que la aplicación se inicie, Spring intentará encontrar la variable de entorno SERVER_PORT y si
-no lo encuentra, tomará por defecto el valor 8080.``, lo mismo ocurre para la variable **ACTIVE_PROFILE**, si no lo
-encuentra, tomará por defecto el valor **dev**:
+En la configuración anterior vemos dos variables de entorno: **CONTAINER_PORT y ACTIVE_PROFILE**. Estas variables de
+entorno tienen definido un valor predeterminado, es decir, por ejemplo, la siguiente variable
+**${CONTAINER_PORT:8080}**, significa que ``cada vez que la aplicación se inicie, Spring intentará encontrar la
+variable de entorno CONTAINER_PORT y si no lo encuentra, tomará por defecto el valor 8080.``, lo mismo ocurre para la
+variable **ACTIVE_PROFILE**, si no lo encuentra, tomará por defecto el valor **dev**:
 
 ````yml
 server:
-  port: ${SERVER_PORT:8080}
+  port: ${CONTAINER_PORT:8080}
 
 spring:
   profiles:
@@ -215,7 +220,7 @@ POSTGRES_SQL_PORT: 5432
 POSTGRES_SQL_DB: db_spring_boot_email
 
 #Server
-SERVER_PORT: 8081
+CONTAINER_PORT: 8091
 ACTIVE_PROFILE: dev
 
 ## Email Config
@@ -223,7 +228,7 @@ EMAIL_HOST: smtp.gmail.com
 EMAIL_PORT: 587
 EMAIL_ID: magadiflo@gmail.com
 EMAIL_PASSWORD: qdonjimehiaemcku
-VERIFY_EMAIL_HOST: http://localhost:${SERVER_PORT}
+VERIFY_EMAIL_HOST: http://localhost:${CONTAINER_PORT}
 
 UI_APP_URL: http://localhost:4200
 ````
@@ -239,7 +244,7 @@ POSTGRES_SQL_PORT: 5432
 POSTGRES_SQL_DB: db_test
 
 #Server
-SERVER_PORT: 8082
+CONTAINER_PORT: 8092
 ACTIVE_PROFILE: test
 
 ## Email Config
@@ -247,7 +252,7 @@ EMAIL_HOST: smtp.gmail.com
 EMAIL_PORT: 587
 EMAIL_ID: magadiflo@gmail.com
 EMAIL_PASSWORD: qdonjimehiaemcku
-VERIFY_EMAIL_HOST: http://localhost:${SERVER_PORT}
+VERIFY_EMAIL_HOST: http://localhost:${CONTAINER_PORT}
 
 UI_APP_URL: http://localhost:4200
 ````
@@ -263,7 +268,7 @@ POSTGRES_SQL_PORT: 5432
 POSTGRES_SQL_DB: db_production
 
 #Server
-SERVER_PORT: 8083
+CONTAINER_PORT: 8093
 ACTIVE_PROFILE: prod
 
 ## Email Config
@@ -271,7 +276,7 @@ EMAIL_HOST: smtp.gmail.com
 EMAIL_PORT: 587
 EMAIL_ID: magadiflo@gmail.com
 EMAIL_PASSWORD: qdonjimehiaemcku
-VERIFY_EMAIL_HOST: http://localhost:${SERVER_PORT}
+VERIFY_EMAIL_HOST: http://localhost:${CONTAINER_PORT}
 
 UI_APP_URL: http://localhost:4200
 ````
@@ -288,10 +293,10 @@ través de la línea de comandos:
 Nos posicionamos en la raíz de nuestro proyecto de Spring Boot y ejecutamos el siguiente comando:
 
 ````bash
- mvn spring-boot:run -Dspring-boot.run.arguments=--SERVER_PORT=4000
+ mvn spring-boot:run -Dspring-boot.run.arguments=--CONTAINER_PORT=4000
 ````
 
-En el comando anterior estamos asignando el valor de 4000 a la variable de entorno **SERVER_PORT**, de esta manera la
+En el comando anterior estamos asignando el valor de 4000 a la variable de entorno **CONTAINER_PORT**, de esta manera la
 aplicación se ejecutará con el perfil dev y nuevo puerto 4000.
 
 ---
@@ -313,7 +318,7 @@ hace cada instrucción:
 # PRIMERA ETAPA
 FROM maven:3.9.3 AS build
 WORKDIR /app
-ARG SERVER_PORT
+ARG HOST_PORT
 COPY pom.xml /app
 RUN mvn dependency:resolve
 COPY . /app
@@ -323,8 +328,8 @@ RUN mvn package -DskipTests -X
 # SEGUNDA ETAPA
 FROM openjdk:17-jdk-alpine
 COPY --from=build /app/target/*.jar app.jar
-EXPOSE ${SERVER_PORT}
-CMD["java", "-jar", "app.jar"]
+EXPOSE ${HOST_PORT}
+CMD ["java", "-jar", "app.jar"]
 ````
 
 ### PRIMERA ETAPA: Creando el archivo .jar
@@ -335,7 +340,7 @@ CMD["java", "-jar", "app.jar"]
   donde trabajaremos, no es obligatorio, pero teniendo un directorio de trabajo nos aseguramos de
   saber exactamente dónde está nuestra aplicación y dónde se está ejecutando para que cuando se acceda al
   contenedor sepamos exactamente dónde buscar.
-- ``ARG SERVER_PORT``, creamos una variable con el ARG (de argumento) llamada SERVER_PORT, porque queremos controlar el
+- ``ARG HOST_PORT``, creamos una variable con el ARG (de argumento) llamada HOST_PORT, porque queremos controlar el
   puerto del contendor desde el exterior del contenedor en ejecución, lo que significa que podemos pasarlo como
   una especie de variable de entorno, variable que podemos pasar de manera dinámica. **Lo hacemos de esta manera
   porque necesitamos hacerlo coincidir con lo que se ejecuta en la computadora.**
@@ -360,15 +365,16 @@ CMD["java", "-jar", "app.jar"]
   extraño, pero no importa el nombre que tenga, solo nos interesa que sea el archivo .jar, solo tendremos un archivo
   .jar, así que para evitar colocar todo su nombre simplemente colocamos ``*.jar``. Ahora, ese .jar que se está
   copiando **le podemos dar un nombre, en nuestro caso le dimos el nombre de app.jar**
-- ``EXPOSE ${SERVER_PORT}``, expondremos el server port, haciendo referencia a la variable SERVER_PORT que pasaremos
-  dinámicamente como el puerto para exponer desde el interior del contenedor.
+- ``EXPOSE ${HOST_PORT}``, expondremos el host port, haciendo referencia a la variable HOST_PORT de la línea que
+  contiene el ARG de la primera etapa. Esta variable la pasaremos dinámicamente como el puerto para exponer nuestro
+  contenedor con el exterior.
 
 **NOTA**
 
 > Recordar, como mencionó Andrés Guzmán en su curso de microservicios, el **EXPOSE** únicamente es a modo de
 > documentación, para decirle al mundo qué puertos están disponibles.
 
-- ``CMD["java", "-jar", "app.jar"]``, le decimos el comando que usaremos para ejecutar nuestra aplicación java.
+- ``CMD ["java", "-jar", "app.jar"]``, le decimos el comando que usaremos para ejecutar nuestra aplicación java.
 
 **DIFERENCIA ENTRE RUN Y CMD**
 
@@ -397,15 +403,15 @@ services:
     build:
       context: .
       args:
-        SERVER_PORT: ${SERVER_PORT}
+        HOST_PORT: ${HOST_PORT}
     image: spring-boot-docker:v1.0.0
     restart: unless-stopped
     env_file:
       - ${ENV_FILE}
     expose:
-      - ${SERVER_PORT}
+      - ${HOST_PORT}
     ports:
-      - ${SERVER_PORT}:${HOST_PORT}
+      - ${HOST_PORT}:${CONTAINER_PORT}
 ````
 
 Antes de iniciar con la explicación de cada línea del archivo anterior, definiremos lo que son los **services** en
@@ -417,9 +423,9 @@ docker-compose:
 - ``spring-boot-docker``, es el nombre que le daremos a nuestro servicio.
 - ``container_name: spring-boot-docker-container``, nombre que le daremos al contenedor que se creará.
 - ``context: .``, indica el path donde está ubicado el archivo **Dockerfile**, en nuestro caso en la raíz **(.)**.
-- ``args: SERVER_PORT: ${SERVER_PORT}``, definimos la variable de entorno **SERVER_PORT** que espera recibir el archivo
-  **Dockerfile**. Ahora, esta variable de entorno está recibiendo un valor dinámico **${SERVER_PORT}** que será definida
-  al momento de construir el contenedor.
+- ``args: HOST_PORT: ${HOST_PORT}``, definimos la variable de entorno **HOST_PORT** que le pasaremos al archivo
+  **Dockerfile**. Ahora, esta variable de entorno está recibiendo un valor dinámico **${HOST_PORT}** que será definida
+  al momento de construir la imagen.
 - ``image: spring-boot-docker:v1.0.0``, le damos un nombre a nuestra imagen y una versión.
 - ``restart: unless-stopped``, significa que el servicio se reiniciará automáticamente cuando Docker se inicie o si el
   servicio se detiene por cualquier motivo excepto si el usuario lo detiene manualmente.
@@ -429,7 +435,7 @@ docker-compose:
 
 **NOTA**
 
-> Podríamos dejar el **EXPOSE del ${SERVER_PORT}** solo en el Dockerfile, pero para estar seguros es que también hacemos
+> Podríamos dejar el **EXPOSE del ${HOST_PORT}** solo en el Dockerfile, pero para estar seguros es que también hacemos
 > el expose del puerto en el archivo docker-compose.yml
 
 ## Default Env File (Archivo de entorno predeterminado)
@@ -440,8 +446,8 @@ usadas en los archivos **docker-compose.yml y Dockerfile**:
 ``.env``
 
 ````properties
-SERVER_PORT=8000
 HOST_PORT=8000
+CONTAINER_PORT=8000
 ````
 
 Cuando ejecutemos el **docker-compose.yml**, este accederá a nuestro **Dockerfile** para construir la imagen docker de
@@ -463,7 +469,7 @@ pasándole una variable de entorno **${ENV_FILE}**, significa que cuando lancemo
 pasarle el archivo correspondiente ya sea con valores de: dev, test o prod.
 
 Mientras que para la construcción de la imagen, **sí requerimos el primer archivo .env**, quien contiene las dos
-variables de entorno: SERVER_PORT y HOST_PORT.
+variables de entorno: HOST_PORT y el CONTAINER_PORT.
 
 ## Archivos Env específicos del entorno
 
@@ -493,22 +499,33 @@ ACTIVE_PROFILE=dev
 # Database
 POSTGRES_SQL_USERNAME=postgres
 POSTGRES_SQL_PASSWORD=magadiflo
-POSTGRES_SQL_HOST=127.0.0.1
+POSTGRES_SQL_HOST=192.168.0.10
 POSTGRES_SQL_PORT=5432
 POSTGRES_SQL_DB=db_spring_boot_email
-# Server
-SERVER_PORT=8081
-## Email Config
+# Host and Container
+HOST_PORT=8081
+CONTAINER_PORT=8081
+# Email Config
 EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=587
 EMAIL_ID=magadiflo@gmail.com
 EMAIL_PASSWORD=${EMAIL_PASSWORD}
-VERIFY_EMAIL_HOST=http://localhost:${SERVER_PORT}
+VERIFY_EMAIL_HOST=http://localhost:${CONTAINER_PORT}
+# FrontEnd
 UI_APP_URL=http://localhost:4200
-HOST_PORT=8000
 ````
 
-**NOTA:** La variable **HOST_PORT**, no está definida en el **application-dev.yml** pero aquí sí la definimos.
+**NOTA 1:** La variable **HOST_PORT**, no está definida en el **application-dev.yml** pero aquí sí la definimos. Esta
+variable hace referencia al puerto exterior del contenedor, es decir, si estamos en nuestra pc local utilizaremos ese
+puerto para poder comunicarnos con el contenedor y el contenedor usará su puerto interno que es el puerto CONTAINER_PORT
+para comunicarse con nuestra aplicación.
+
+**NOTA 2:** La variable **POSTGRES_SQL_HOST** contiene la ip 192.168.0.10, que es la ip de mi pc local donde se
+encuentra instalado la base de datos de Postgresql, es decir, cuando se ejecute nuestra aplicación dentro del
+contenedor, para conectarse a la base de datos deberá apuntar a mi pc local. Solo como acotación, allí no irá el
+localhost o el 127.0.0.1, ya que nuestra aplicación estará en un contenedor y si dejamos con uno de esos valores, a
+donde apuntará esa dirección será al localhost del contenedor y lo que nosotros queremos es que apunte a nuestra pc,
+no al contenedor mismo.
 
 **IMPORTANTE**
 
@@ -533,19 +550,20 @@ ACTIVE_PROFILE=test
 # Database
 POSTGRES_SQL_USERNAME=postgres
 POSTGRES_SQL_PASSWORD=magadiflo
-POSTGRES_SQL_HOST=127.0.0.1
+POSTGRES_SQL_HOST=192.168.0.10
 POSTGRES_SQL_PORT=5432
 POSTGRES_SQL_DB=db_test
-# Server
-SERVER_PORT=8082
-## Email Config
+# Host and Container
+HOST_PORT=8082
+CONTAINER_PORT=8082
+# Email Config
 EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=587
 EMAIL_ID=magadiflo@gmail.com
 EMAIL_PASSWORD=${EMAIL_PASSWORD}
-VERIFY_EMAIL_HOST=http://localhost:${SERVER_PORT}
+VERIFY_EMAIL_HOST=http://localhost:${CONTAINER_PORT}
+# FrontEnd
 UI_APP_URL=http://localhost:4200
-HOST_PORT=8000
 ````
 
 Y por último para el entorno de producción, creamos el archivo **.env.prod**:
@@ -556,19 +574,20 @@ ACTIVE_PROFILE=prod
 # Database
 POSTGRES_SQL_USERNAME=postgres
 POSTGRES_SQL_PASSWORD=magadiflo
-POSTGRES_SQL_HOST=127.0.0.1
+POSTGRES_SQL_HOST=192.168.0.10
 POSTGRES_SQL_PORT=5432
 POSTGRES_SQL_DB=db_production
-# Server
-SERVER_PORT=8083
-## Email Config
+# Host and Container
+HOST_PORT=8083
+CONTAINER_PORT=8083
+# Email Config
 EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=587
 EMAIL_ID=magadiflo@gmail.com
 EMAIL_PASSWORD=${EMAIL_PASSWORD}
-VERIFY_EMAIL_HOST=http://localhost:${SERVER_PORT}
+VERIFY_EMAIL_HOST=http://localhost:${CONTAINER_PORT}
+# FrontEnd
 UI_APP_URL=http://localhost:4200
-HOST_PORT=8000
 ````
 
 ## Script de Inicio
@@ -617,7 +636,7 @@ env_file:
 build:
   context: .
   args:
-    SERVER_PORT: ${SERVER_PORT}
+    HOST_PORT: ${HOST_PORT}
 ````
 
 Recordemos que en los archivos de entorno: ``.env.dev, .env.test y .env.prod`` definimos la variable ${EMAIL_PASSWORD}
@@ -639,11 +658,11 @@ haber creado las variables para todas las otras variables que están en el archi
 entorno) y pasarlos al momento de ejecutar el archivo sh tal como lo haremos con la variable EMAIL_PASSWORD, pero como
 son muchas variables, solo estamos ejemplificando con el EMAIL_PASSWORD.
 
-### ¿Cómo obtiene los valores para las variables SERVER_PORT y HOST_PORT?
+### ¿Cómo obtiene los valores para las variables HOST_PORT y CONTAINER_PORT?
 
 **De manera predeterminada Docker buscará un archivo llamado .env** para utilizar sus variables definidas, en nuestro
-caso sí tenemos creado dicho archivo con dos variables de entorno: SERVER_PORT y HOST_PORT, mismas variables que luego
-serán usadas en el archivo docker-compose.yml, ya que este archivo espera recibir el valor de dichas variables de
+caso sí tenemos creado dicho archivo con dos variables de entorno: HOST_PORT y CONTAINER_PORT, mismas variables que
+luego serán usadas en el archivo docker-compose.yml, ya que este archivo espera recibir el valor de dichas variables de
 entorno. **Eso significa que no tenemos que hacer nada para que el archivo .env entre en funcionamiento, en automático
 será usado por el docker-compose.yml.**
 
