@@ -1,1 +1,1 @@
-ENV_FILE=./.env.prod docker-compose up -d --build
+CONTAINER_NAME=app-container-prod TAG=prod ENV_FILE=./.env.prod docker-compose --env-file ./.env.prod up -d --build

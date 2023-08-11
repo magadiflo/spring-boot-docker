@@ -399,12 +399,12 @@ los contenedores:
 ````yaml
 services:
   spring-boot-docker:
-    container_name: spring-boot-docker-container
+    container_name: ${CONTAINER_NAME}
     build:
       context: .
       args:
         HOST_PORT: ${HOST_PORT}
-    image: spring-boot-docker:v1.0.0
+    image: spring-boot-docker:${TAG}
     restart: unless-stopped
     env_file:
       - ${ENV_FILE}
@@ -421,12 +421,14 @@ docker-compose:
 > aplicación.
 
 - ``spring-boot-docker``, es el nombre que le daremos a nuestro servicio.
-- ``container_name: spring-boot-docker-container``, nombre que le daremos al contenedor que se creará.
+- ``container_name: ${CONTAINER_NAME}``, nombre que le daremos al contenedor que se creará. El valor de la variable
+  CONTAINER_NAME será pasado usando la shell, es decir la CLI de docker compose.
 - ``context: .``, indica el path donde está ubicado el archivo **Dockerfile**, en nuestro caso en la raíz **(.)**.
 - ``args: HOST_PORT: ${HOST_PORT}``, definimos la variable de entorno **HOST_PORT** que le pasaremos al archivo
   **Dockerfile**. Ahora, esta variable de entorno está recibiendo un valor dinámico **${HOST_PORT}** que será definida
   al momento de construir la imagen.
-- ``image: spring-boot-docker:v1.0.0``, le damos un nombre a nuestra imagen y una versión.
+- ``image: spring-boot-docker:${TAG}``, le damos un nombre a nuestra imagen y una versión. El valor de la variable TAG
+  será pasado a través de la shell (usando la CLI de docker compose).
 - ``restart: unless-stopped``, significa que el servicio se reiniciará automáticamente cuando Docker se inicie o si el
   servicio se detiene por cualquier motivo excepto si el usuario lo detiene manualmente.
 - ``env_file: - ${ENV_FILE}``, se utiliza para cargar variables de entorno desde un archivo específico en el sistema de
@@ -602,68 +604,129 @@ Los archivos pueden tener cualquier nombre, pero deben terminar con la extensió
 ``start-dev.sh``
 
 ````shell
-ENV_FILE=./.env.dev docker-compose up -d --build
+CONTAINER_NAME=app-container-dev TAG=dev ENV_FILE=./.env.dev docker-compose --env-file ./.env.dev up -d --build
 ````
 
 ``start-test.sh``
 
 ````shell
-ENV_FILE=./.env.test docker-compose up -d --build
+CONTAINER_NAME=app-container-test TAG=test ENV_FILE=./.env.test docker-compose --env-file ./.env.test up -d --build
 ````
 
 ``start-prod.sh``
 
 ````shell
-ENV_FILE=./.env.prod docker-compose up -d --build
+CONTAINER_NAME=app-container-prod TAG=prod ENV_FILE=./.env.prod docker-compose --env-file ./.env.prod up -d --build
 ````
 
 **DONDE**
 
-**ENV_FILE=./.env.<entorno>**, corresponde a la siguiente configuración del docker-compose.yml donde está obteniendo
-el archivo .env.<entorno> ubicado en la raíz del proyecto:
+De los archivos script de shell anteriores, se describen a continuación las
+[**variables de entorno**](https://docs.docker.com/compose/environment-variables/set-environment-variables/) que nuestro
+archivo **docker-compose.yml** espera recibir:
 
+- **CONTAINER_NAME**, le asignamos el nombre que tendrá nuestro contenedor cuando se levante.
+- **TAG**, le asignamos la versión que tendrá nuestra imagen creada.
+- **ENV_FILE**, le asignamos el archivo **.env.<entorno>** (dependiendo del entorno) que está ubicado justamente al
+  mismo nivel del archivo **docker-compose.yml**. Es importante resaltar que las variables de entorno que tiene el
+  archivo que se está asignando, **se usarán al momento de levantar el contenedor**, es decir, el contenedor que se cree
+  usará las variables de entorno definidas en el archivo asignado a la variable ENV_FILE, esto es, porque esta variable
+  está siendo usada en el atributo **env_file**, que precisamente se usa para definir las variables que usarán los
+  contenedores a crear, tal como se ve a continuación:
+
+  ````
+  env_file:
+    - ${ENV_FILE}
+  ````
+
+- **-d**, modo separado (detached): ejecutar contenedores en segundo plano.
+- **--build**, cree imágenes antes de iniciar contenedores. Esta construcción se hará en función de la siguiente
+  configuración:
+
+  ````
+  build:
+    context: .
+    args:
+      HOST_PORT: ${HOST_PORT}
+  ````
+
+  Por defecto, como nuestro archivo **Dockerfile** está al mismo nivel en ruta que el **docker-compose.yml**, será usado
+  precisamente para hacer la construcción de la imagen.
+
+- ``docker-compose --env-file ./.env.dev up``, este último comando lo dejé al final porque merece una explicación
+  detallada. Si tenemos muchas variables de entorno que están dentro de un archivo y queremos pasarlos al momento de
+  ejecutar el ``docker-compose up``, lo podemos hacer colocando en medio de los dos comandos anteriores la
+  bandera ``--env-file`` seguido de la ruta y el archivo que contiene dichas variables ``./.env.dev``.
+
+**IMPORTANTE**
+> Si el ``--env-file`` no se usa en la línea de comando, el archivo ``.env`` se cargará de forma predeterminada. Eso
+> significa, según nuestro caso, que el archivo ``.env`` que contiene los datos que mostramos en la parte inferior
+> son los que serán cargados.
+
+````dotenv
+HOST_PORT=8000
+CONTAINER_PORT=8000
 ````
-env_file:
-  - ${ENV_FILE}
+
+**NOTA**
+> En nuestro caso usamos ``docker-compose --env-file ./.env.dev up`` porque queremos usar de este archivo de entorno las
+> variables HOST_PORT y CONTAINER_PORT que serán usadas para construir la imagen y exponer los puertos de los
+> contenedores.
+>
+> Pero si nos damos cuenta, en los script de shell ya estamos pasando el archivo .env.dev (test o prod) en la variable:
+> ``ENV_FILE=./.env.dev``, pero ojo, si observamos el **docker-compose.yml** veremos que esa variable será usada para
+> **levantar contenedores**, mientras que el **docker-compose.yml** requiere variables de entorno propios, para por
+> ejemplo, definir los puertos **externo:interno**
+>
+> Finalmente, como se mencionó en el apartado de **IMPORTANTE** si nosotros omitimos esta configuración
+> ``--env-file ./.env.dev`` (significa que se ejecutará: ``docker-compose up``), se tomará por defecto el archivo
+> ``.env`` cuyos valores de HOST_PORT y CONTAINER_PORT no coincidirán con los definidos en las variables de entorno
+> del archivo .env.dev, o .env.test o .env.prod que están siendo pasadas en ``ENV_FILE=./.env.dev`` para la creación
+> del contenedor.
+
+### ¿Cómo obtiene los valores para las variables HOST_PORT y CONTAINER_PORT?
+
+**De manera predeterminada Docker buscará un archivo llamado .env** para utilizar sus variables definidas, en nuestro
+caso sí tenemos creado dicho archivo con dos variables de entorno: HOST_PORT y CONTAINER_PORT, pero como explicamos
+anteriormente al haber definido de esta manera: ``docker-compose --env-file ./.env.dev up``, estamos siendo explícitos
+por lo que ya no tomará por defecto el archivo ``.env``, sino más bien el archivo que le estamos definiendo, en este
+caos el archivo ``.env.dev`` y de este archivo tomará sus variables HOST_PORT y CONTAINER_PORT.
+
+## Despliegue
+
+**Usando el Git Bash de Git** ejecutaremos el **script de shell** para crear la imagen y levantar el contenedor. Es
+importante usar esta línea de comandos, ya que los archivos **script de shell** están asociados con sistemas operativos
+como Linux. Si ejecuto esta instrucción usando el cmd de windows no se podrá, porque no detectará el **.sh** ni las
+variables de entorno que le pase por la línea de comando.
+
+Entonces, usando el **Git Bash de Git** ejecutamos el siguiente comando:
+
+````bash
+EMAIL_PASSWORD=qdonjimehiaemcku ./start-dev.sh
 ````
 
-- **docker-compose up**, es el comando de Docker Compose con el que empezará a ejecutarse el archivo docker-compose.yml.
-- **-d**, que la ejecución ocurra en modo detached, es decir que no tome la consola, sino que se ejecute en background.
-- **--build**, porque tenemos en el docker-compose.yml un archivo Dockerfile que necesitamos construir, esto se refiere
-  a la siguiente configuración:
+Observamos que además de ejecutar nuestro **script de shell** (start-dev.sh), le estamos pasando previamente una
+variable de entorno **EMAIL_PASSWORD**, esto es porque en ningún archivo de propiedad, ni archivo de entorno hemos
+definido el valor de esta variable, pero sí estos archivos de propiedad o de entorno, esperan recibir un valor para
+EMAIL_PASSWORD.
 
-````
-build:
-  context: .
-  args:
-    HOST_PORT: ${HOST_PORT}
-````
-
-Recordemos que en los archivos de entorno: ``.env.dev, .env.test y .env.prod`` definimos la variable ${EMAIL_PASSWORD}
-y hasta el momento no lo estamos pasando. Entonces podríamos hacer algo como esto en cada **script de shell**
-creado anteriormente:
-
-````shell
-ENV_FILE=./.env.dev EMAIL_PASSWORD=qdonjimehiaemcku docker-compose up -d --build
-````
-
-Como vemos, al igual que la variable de entorno ENV_FILE (quien está definido en el docker-compose.yml), también
-podríamos definir la variable EMAIL_PASSWORD (definido en los 3 archivos .env de entorno) en esta misma línea de
-comandos, **pero en nuestro caso no lo haremos así.**
-
-Si bien es cierto, podríamos dejar la variable EMAIL_PASSWORD definida en la misma línea de comandos, pero
-nuestra intención no es guardar datos sensibles en los archivos, en este caso en los **script de shell**, sino más bien,
+Nuestra intención no es guardar datos sensibles en los archivos, en este caso en los **script de shell**, sino más bien,
 **el valor de EMAIL_PASSWORD lo pasaremos justo al momento de ejecutar el archivo sh**, aunque en realidad, deberíamos
 haber creado las variables para todas las otras variables que están en el archivo .env.dev (y todos los archivos de
 entorno) y pasarlos al momento de ejecutar el archivo sh tal como lo haremos con la variable EMAIL_PASSWORD, pero como
 son muchas variables, solo estamos ejemplificando con el EMAIL_PASSWORD.
 
-### ¿Cómo obtiene los valores para las variables HOST_PORT y CONTAINER_PORT?
+**IMPORTANTE**
 
-**De manera predeterminada Docker buscará un archivo llamado .env** para utilizar sus variables definidas, en nuestro
-caso sí tenemos creado dicho archivo con dos variables de entorno: HOST_PORT y CONTAINER_PORT, mismas variables que
-luego serán usadas en el archivo docker-compose.yml, ya que este archivo espera recibir el valor de dichas variables de
-entorno. **Eso significa que no tenemos que hacer nada para que el archivo .env entre en funcionamiento, en automático
-será usado por el docker-compose.yml.**
-
-
+> Como estamos usando Postgresql que está instalado en mi pc local y nuestra aplicación estará desplegada en un
+> contenedor, para que se comunique desde dentro del contenedor hacia afuera, es decir, hacia mi pc local, quien por
+> cierto tiene la ``ip 192.168.0.10`` debemos configurar postgresql para que admita solicitudes de esa ip, sino marcará
+> el siguiente error:<br>
+> ``org.postgresql.util.PSQLException: FATAL: no hay una l nea en pg_hba.conf para  192.168.0.10 , usuario  postgres ,
+> base de datos  db_spring_boot_email , sin cifrad``.<br>
+>
+> Para solucionarlo abrimos el archivo ``C:\Program Files\PostgreSQL\14\data\pg_hba.conf``, agregamos la siguiente
+> configuración y reiniciamos postgresql:<br>
+>
+> ``#TYPE  DATABASE        USER            ADDRESS                 METHOD``</br>
+> ``host    all             all             192.168.0.10/32         trust``
