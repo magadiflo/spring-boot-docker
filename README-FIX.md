@@ -2,6 +2,12 @@
 
 ---
 
+**NOTA**
+> Esta corrección es solo a modo de documentación, ya que si vamos al `Dockerfile` de este proyecto veremos que aún
+> mantiene `EXPOSE ${HOST_PORT}` lo cual está mal, debería estar en `EXPOSE ${CONTAINER_PORT}`, pero realizar ese
+> cambio implica cambiar en varios lugares de esta aplicación, así que lo dejaré así, pero ya sabemos que en realidad
+> debería estar `EXPOSE ${CONTAINER_PORT}`.
+
 En el `Dockerfile` de este proyecto y en la documentación `README.md` **he colocado `EXPOSE ${HOST_PORT}`, lo cual es
 incorrecto.** Lo correcto sería definir `EXPOSE ${CONTAINER_PORT}`.
 
